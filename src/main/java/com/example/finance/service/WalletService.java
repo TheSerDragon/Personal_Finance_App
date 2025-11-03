@@ -3,7 +3,7 @@ package com.example.finance.service;
 import com.example.finance.model.Transaction;
 import com.example.finance.model.User;
 import com.example.finance.model.Wallet;
-import com.example.finance.storage.FileStorage;
+import com.example.finance.storage.Storage;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializer;
@@ -17,7 +17,12 @@ import java.util.Map;
 import java.util.Scanner;
 
 public class WalletService {
-    private final FileStorage storage = new FileStorage();
+    private final Storage storage;
+
+    // Внедрение зависимости через конструктор
+    public WalletService(Storage storage) {
+        this.storage = storage;
+    }
 
     public void loadWallet(User user) {
         Wallet w = storage.loadWallet(user.getName());
@@ -33,7 +38,7 @@ public class WalletService {
         System.out.println("Кошелёк сохранён.");
     }
 
-    private static class ParsedOp {
+private static class ParsedOp {
         boolean valid = false;
         String category;
         double amount;

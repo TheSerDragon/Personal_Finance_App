@@ -4,12 +4,15 @@ import com.example.finance.model.User;
 import com.example.finance.service.UserService;
 import com.example.finance.service.WalletService;
 import com.example.finance.service.BudgetService;
+import com.example.finance.storage.FileStorage;
+import com.example.finance.storage.Storage;
 
 import java.util.Scanner;
 
 public class CommandProcessor {
     private final UserService userService = new UserService();
-    private final WalletService walletService = new WalletService();
+    private final Storage storage = new FileStorage();
+    private final WalletService walletService = new WalletService(storage);
     private final BudgetService budgetService = new BudgetService();
     private User currentUser = null;
     private final Scanner scanner = new Scanner(System.in);

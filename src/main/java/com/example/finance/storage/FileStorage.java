@@ -1,13 +1,13 @@
 package com.example.finance.storage;
 
-import com.example.finance.model.User;
 import com.example.finance.model.Wallet;
-
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 
-public class FileStorage {
+public class FileStorage implements Storage {
     private static final String USERS_FILE = "users.dat";
     private static final String WALLETS_DIR = "wallets";
 
@@ -17,7 +17,8 @@ public class FileStorage {
         } catch (IOException ignored) {}
     }
 
-    public void persistUsers(java.util.Map<String, String> users) {
+    @Override
+    public void persistUsers(Map<String, String> users) {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(USERS_FILE))) {
             oos.writeObject(users);
         } catch (IOException e) {
@@ -25,19 +26,21 @@ public class FileStorage {
         }
     }
 
+    @Override
     @SuppressWarnings("unchecked")
-    public java.util.Map<String, String> loadUsers() {
+    public Map<String, String> loadUsers() {
         File f = new File(USERS_FILE);
-        if (!f.exists()) return new java.util.HashMap<>();
+        if (!f.exists()) return new HashMap<>();
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {
             Object obj = ois.readObject();
-            if (obj instanceof java.util.Map) return (java.util.Map<String, String>) obj;
+            if (obj instanceof Map) return (Map<String, String>) obj;
         } catch (Exception e) {
             System.out.println("Не удалось загрузить файл пользователей: " + e.getMessage());
         }
-        return new java.util.HashMap<>();
+        return new HashMap<>();
     }
 
+    @Override
     public void saveWallet(String username, Wallet wallet) {
         File out = new File(WALLETS_DIR, username + ".ser");
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(out))) {
@@ -47,6 +50,7 @@ public class FileStorage {
         }
     }
 
+    @Override
     public Wallet loadWallet(String username) {
         File in = new File(WALLETS_DIR, username + ".ser");
         if (!in.exists()) return null;

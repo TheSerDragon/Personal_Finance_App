@@ -2,29 +2,39 @@ package com.example.finance;
 
 import com.example.finance.model.User;
 import com.example.finance.service.*;
+import com.example.finance.storage.FileStorage;
+import com.example.finance.storage.Storage;
 import org.junit.jupiter.api.Test;
+
 import java.io.ByteArrayInputStream;
 import java.util.Scanner;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class BudgetLimitAlertTest {
 
     @Test
     public void testBudgetLimitExceeded() {
-        UserService us = new UserService();
-        us.register("testBudget", "1234");
-        User user = us.login("testBudget", "1234");
+        // Создаём пользователя
+        UserService userService = new UserService();
+        userService.register("testBudget", "1234");
+        User user = userService.login("testBudget", "1234");
 
-        BudgetService bs = new BudgetService();
-        WalletService ws = new WalletService();
+        // Передаём FileStorage
+        Storage storage = new FileStorage();
+        WalletService walletService = new WalletService(storage);
+        BudgetService budgetService = new BudgetService();
 
-        bs.addCategory(user, "Еда");
-        bs.setBudget(user, "Еда:500");
+        // Настраиваем категорию и бюджет
+        budgetService.addCategory(user, "Еда");
+        budgetService.setBudget(user, "Еда:500");
 
-        // Добавляем расход больше бюджета
+        // Симулируем ввод "y" для подтверждения создания категории
         String simulatedInput = "y\n";
         Scanner scanner = new Scanner(new ByteArrayInputStream(simulatedInput.getBytes()));
-        ws.addExpense(user, "Еда:700:ужин", scanner);
+
+        // Добавляем расход, превышающий бюджет
+        walletService.addExpense(user, "Еда:700:ужин", scanner);
 
         double remaining = user.getWallet().getRemainingBudget("Еда");
         assertTrue(remaining < 0, "Бюджет должен быть превышен");

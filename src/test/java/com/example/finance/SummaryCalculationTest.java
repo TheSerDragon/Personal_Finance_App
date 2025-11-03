@@ -2,27 +2,47 @@ package com.example.finance;
 
 import com.example.finance.model.User;
 import com.example.finance.service.*;
+import com.example.finance.storage.FileStorage;
+import com.example.finance.storage.Storage;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
+
+import java.io.ByteArrayInputStream;
+import java.util.Scanner;
 
 public class SummaryCalculationTest {
 
     @Test
     public void testCategoryTotals() {
-        UserService us = new UserService();
-        us.register("summaryUser", "1234");
-        User u = us.login("summaryUser", "1234");
+        // Создаём пользователя
+        UserService userService = new UserService();
+        userService.register("summaryUser", "1234");
+        User user = userService.login("summaryUser", "1234");
 
-        WalletService ws = new WalletService();
-        ws.addIncome(u, "Зарплата:1000:test");
-        ws.addExpense(u, "Еда:200:lunch", new java.util.Scanner(System.in));
-        ws.addExpense(u, "Еда:100:coffee", new java.util.Scanner(System.in));
+        // Передаём FileStorage
+        Storage storage = new FileStorage();
+        WalletService walletService = new WalletService(storage);
 
-        double totalExp = u.getWallet().getTotalByTypeAndCategory("expense", "Еда");
-        double totalInc = u.getWallet().getTotalByTypeAndCategory("income", "Зарплата");
+        // Добавляем доход
+        walletService.addIncome(user, "Зарплата:1000:test");
+
+        // Симулируем подтверждение "y" для категории
+        String simulatedInput = "y\n";
+        Scanner scanner = new Scanner(new ByteArrayInputStream(simulatedInput.getBytes()));
+
+        // Добавляем расходы
+        walletService.addExpense(user, "Еда:200:lunch", scanner);
+
+        // Второй расход — тоже с симуляцией
+        scanner = new Scanner(new ByteArrayInputStream(simulatedInput.getBytes()));
+        walletService.addExpense(user, "Еда:100:coffee", scanner);
+
+        // Проверки
+        double totalExp = user.getWallet().getTotalByTypeAndCategory("expense", "Еда");
+        double totalInc = user.getWallet().getTotalByTypeAndCategory("income", "Зарплата");
 
         assertEquals(300.0, totalExp, 0.01);
         assertEquals(1000.0, totalInc, 0.01);
-        assertEquals(700.0, u.getWallet().getBalance(), 0.01);
+        assertEquals(700.0, user.getWallet().getBalance(), 0.01);
     }
 }
