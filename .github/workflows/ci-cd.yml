@@ -25,7 +25,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build and run tests
+      - name: Build and test
         run: mvn -B verify
 
       - name: Upload test reports
@@ -35,7 +35,7 @@ jobs:
           name: surefire-reports-${{ matrix.os }}
           path: target/surefire-reports/**/*.xml
 
-  # Сборка артефакта для деплоя только на Ubuntu
+  # Сборка jar артефакта
   build-ubuntu:
     runs-on: ubuntu-latest
     steps:
@@ -49,15 +49,14 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build and run tests
-        run: mvn -B verify
+      - name: Build project
+        run: mvn -B package -DskipTests=false
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-jar
           path: target/*.jar
-          retention-days: 7
 
   # Деплой на сервер
   deploy:
@@ -85,7 +84,6 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            cd /var/www/finance-app
-            cp $GITHUB_WORKSPACE/deploy/*.jar ./app.jar
-            pkill -f 'java.*app.jar' || true
-            nohup java -jar app.jar > app.log 2>&1 &
+            mkdir -p /home/sergey/finance-app
+            cp $GITHUB_WORKSPACE/deploy/*.jar /home/sergey/finance-app/app.jar
+            sudo systemctl restart finance-app
