@@ -8,35 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Кроссплатформенные тесты
-  build-and-test-matrix:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Build and test
-        run: mvn -B verify
-
-      - name: Upload test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: surefire-reports-${{ matrix.os }}
-          path: target/surefire-reports/**/*.xml
-
-  # Сборка jar артефакта
-  build-ubuntu:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -49,41 +21,38 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build project
-        run: mvn -B package -DskipTests=false
+      - name: Build and run tests
+        run: mvn -B verify
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-jar
           path: target/*.jar
+          retention-days: 7
 
-  # Деплой на сервер
   deploy:
-    needs: build-ubuntu
+    needs: build-and-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Download artifact
+      - name: Download JAR artifact
         uses: actions/download-artifact@v4
         with:
           name: build-jar
           path: ./deploy
 
-      - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Deploy to remote server via SSH
+      - name: Deploy to remote server
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          port: ${{ secrets.SSH_PORT }}
+          host: ${{ secrets.SSH_HOST }}        # IP твоей виртуалки
+          username: ${{ secrets.SSH_USER }}    # например, sergey
+          key: ${{ secrets.SSH_PRIVATE_KEY }}  # приватный ключ
+          port: 22                             # стандартный SSH
           script: |
-            mkdir -p /home/sergey/finance-app
-            cp $GITHUB_WORKSPACE/deploy/*.jar /home/sergey/finance-app/app.jar
-            sudo systemctl restart finance-app
+            mkdir -p /var/www/finance-app
+            cp ./deploy/*.jar /var/www/finance-app/app.jar
+            pkill -f 'java.*app.jar' || true
+            nohup java -jar /var/www/finance-app/app.jar > /var/www/finance-app/app.log 2>&1 &
