@@ -8,8 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Сборка и тестирование
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -24,35 +25,27 @@ jobs:
       - name: Build and run tests
         run: mvn -B verify
 
-      - name: Upload JAR artifact
+      - name: Upload test reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-jar
-          path: target/*.jar
-          retention-days: 7
+          name: surefire-reports
+          path: target/surefire-reports/**/*.xml
 
+  # Деплой приложения
   deploy:
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Download JAR artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-jar
-          path: ./deploy
+      - name: Build JAR artifact
+        run: mvn -B package
 
-      - name: Deploy to remote server
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.SSH_HOST }}        # IP твоей виртуалки
-          username: ${{ secrets.SSH_USER }}    # например, sergey
-          key: ${{ secrets.SSH_PRIVATE_KEY }}  # приватный ключ
-          port: 22                             # стандартный SSH
-          script: |
-            mkdir -p /var/www/finance-app
-            cp ./deploy/*.jar /var/www/finance-app/app.jar
-            pkill -f 'java.*app.jar' || true
-            nohup java -jar /var/www/finance-app/app.jar > /var/www/finance-app/app.log 2>&1 &
+      - name: Deploy app to VM
+        run: |
+          mkdir -p /home/sergey/finance-app
+          cp target/*.jar /home/sergey/finance-app/app.jar
+          pkill -f 'java.*app.jar' || true
+          nohup java -jar /home/sergey/finance-app/app.jar > /home/sergey/finance-app/app.log 2>&1 &
